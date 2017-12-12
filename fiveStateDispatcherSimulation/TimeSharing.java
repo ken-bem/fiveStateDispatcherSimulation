@@ -33,18 +33,25 @@ class TimeSharing {
 					timeOut( ); // simular Timesharing, regresa a Ready
 
 				} // final del if !OperatingSystem.readyQueue.isEmpty()
-				else if (!OperatingSystem.readySuspendedQueue.isEmpty()){
-					activate( OperatingSystem.readySuspendedQueue.remove());
-					
-					OperatingSystem.showQueue(  OperatingSystem.readySuspendedQueue);
+
+                boolean gate = randomize.nextBoolean();
+			    if(gate){
+                    if (!OperatingSystem.readySuspendedQueue.isEmpty()){
+                        activate( OperatingSystem.readySuspendedQueue.remove());
+
+                        OperatingSystem.showQueue( OperatingSystem.readySuspendedQueue);
 
 				}else {
 					if (!OperatingSystem.blockSuspendedQueue.isEmpty())
 						activate(OperatingSystem.blockSuspendedQueue.remove());
-
-					OperatingSystem.showQueue(OperatingSystem.blockSuspendedQueue);
+					    OperatingSystem.showQueue(OperatingSystem.blockSuspendedQueue);
+                    }
 				}
 
+
+				if(randomize.nextInt(5 ) == 0){
+			        suspend();
+                }
 
 
 				if (randomize.nextInt(4) == 0 ) // simular Event Occurs
@@ -67,6 +74,7 @@ class TimeSharing {
 				eventOccurs();
 			} // catch de EventOccursException
 
+
 		} // final del while( true )
 
 		System.out.println("\nfinal del método timeSharing()");
@@ -88,36 +96,32 @@ class TimeSharing {
 	static Random randomize = new Random( );
 
 	void eventOccurs( ) throws Exception{
+
 		if( OperatingSystem.blockedQueue.isEmpty() && OperatingSystem.blockSuspendedQueue.isEmpty() )
 			return; // si nadie espera, ignorar el i/o interrupt
-		else{
-			if(OperatingSystem.blockedQueue.isEmpty()){
-				PCB process = OperatingSystem.blockSuspendedQueue.remove();
-				process.eventOccurs();
-				OperatingSystem.readySuspendedQueue.add(process);
 
-			}else {
-				PCB process = OperatingSystem.blockedQueue.remove( );
-				process.eventOccurs();
-				OperatingSystem.readyQueue.add( process );
+        if(OperatingSystem.blockedQueue.isEmpty()){
+            PCB process = OperatingSystem.blockSuspendedQueue.remove();
+            process.eventOccurs();
+            OperatingSystem.readySuspendedQueue.add(process);
+        }else {
+            PCB process = OperatingSystem.blockedQueue.remove( );
+            process.eventOccurs();
+            OperatingSystem.readyQueue.add( process );
 			}
 
-
-
-
-		} // final el else
 
 	} // final del método eventOccurs
 
 	//TODO LOGICAL PROBLEM HERE
 	void kill( PCB process ) throws Exception {
-		if( process == null )
+		if( process == null)
 			throw new Exception("Error en kill, proceso es null.");
 
 		process.release();
 
 		OperatingSystem.exitQueue.add( process );
-		process = null;
+		OperatingSystem.runningPcb = null;
 		OperatingSystem.showQueue( OperatingSystem.exitQueue );
 		return; // return opcional en métodos de tipo void
 	} // final del método kill
@@ -143,9 +147,6 @@ class TimeSharing {
 			process.admitSuspended(programCounter);
 			OperatingSystem.readySuspendedQueue.add(process);
 		}
-
-
-
 
 	} // final del método Admit()
 
@@ -174,15 +175,10 @@ class TimeSharing {
 
 	void eventWait ( ) throws Exception{
 
-		if (flow) {
 			OperatingSystem.runningPcb.eventWait();
-
 			OperatingSystem.blockedQueue.add(OperatingSystem.runningPcb);
 			OperatingSystem.runningPcb = null;
 			OperatingSystem.showQueue(OperatingSystem.blockedQueue);
-		}else {
-			suspend();
-		}
 	} // final del método eventWait()
 
 	void dispatch( ) throws Exception{
@@ -204,10 +200,22 @@ class TimeSharing {
 
 	void suspend() throws  Exception{
 
-		OperatingSystem.runningPcb.suspend();
-		OperatingSystem.readySuspendedQueue.add(OperatingSystem.runningPcb);
-		OperatingSystem.runningPcb = null;
-		OperatingSystem.showQueue(OperatingSystem.readySuspendedQueue);
+	    if(OperatingSystem.runningPcb != null){
+            OperatingSystem.runningPcb.suspend();
+
+            switch(OperatingSystem.runningPcb.getProcessStatus()){
+                case BLOCKED_SUSPEND:
+                    OperatingSystem.blockSuspendedQueue.add(OperatingSystem.runningPcb);
+                    OperatingSystem.showQueue(OperatingSystem.blockSuspendedQueue);
+                    break;
+                case READY_SUSPEND:
+                    OperatingSystem.readySuspendedQueue.add(OperatingSystem.runningPcb);
+                    OperatingSystem.showQueue(OperatingSystem.readySuspendedQueue);
+                    break;
+
+            }
+            OperatingSystem.runningPcb = null;
+	    }
 	}
 
 } // final de la class TimeSharing
